@@ -1,0 +1,201 @@
+#!/bin/bash
+
+# Prompt user to enter backup directory
+read -p "Enter the backup directory path: " backup_dir
+
+# Prompt user to enter source directory
+read -p "Enter the source directory path: " source_dir
+
+while true
+do
+    # Display menu
+    echo ""
+    echo "File Backup System"
+    echo "------------------"
+    echo "1. Backup files"
+    echo "2. Restore files"
+    echo "3. Exclude files or directories from backup"
+    echo "4. View backup history"
+    echo "5. Compress backup"
+    echo "6. Encrypt backup"
+    echo "7. Decrypt backup"
+    echo "8. Delete backup"
+    echo "10.Verify Backup Integrity"
+    echo "11.Rotate Backups"
+    echo "12.Move Backups"
+    echo "13.Backup to external Hardware"
+    echo "14. Help"
+    echo "9. Exit"
+    echo ""
+
+    # Read user input
+    read -p "Enter your choice: " choice
+
+    # Handle user input
+    case $choice in
+        1)
+            # Backup files
+            cp -r "$source_dir"/* "$backup_dir"
+            echo ""
+             echo "Files backed up successfully."
+            ;;
+        2)
+            # Restore files
+            cp -r "$backup_dir"/* "$source_dir"
+            echo ""
+            echo "Files restored successfully."
+            ;;
+        3)
+            # Exclude files or directories from backup
+            read -p "Enter file or directory name to exclude: " exclude_name
+            read -p "Exclude all occurrences of '$exclude_name'? (y/n) " exclude_all
+
+            if [ "$exclude_all" == "y" ]; then
+                find "$source_dir" -type d -name "$exclude_name" -exec rm -rf {} \; -o -name "$exclude_name" -exec rm -f {} \;
+                echo ""
+                echo "All occurrences of '$exclude_name' have been excluded from backup."
+            else
+                find "$source_dir" -name "$exclude_name" -exec rm -f {} \;
+                echo ""
+                echo "All occurrences of '$exclude_name' have been excluded from backup."
+         
+            fi
+            ;;
+        4)
+            # View backup history
+            ls -ltr "$backup_dir"
+            ;;
+        5)
+            # Compress backup
+            read -p "Enter name of compressed backup file: " compressed_file_name
+            tar -czf "$compressed_file_name.tar.gz" "$backup_dir"
+            echo ""
+            echo "Backup compressed successfully."
+            ;;
+        6)
+            # Encrypt backup
+            read -p "Enter password for encryption: " password
+            tar -czf - "$backup_dir" | openssl enc -aes-256-cbc -salt -out backup.tar.gz.enc -k "$password"
+            echo ""
+            echo "Backup encrypted successfully."
+             ;;
+        7)
+            # Decrypt backup
+            read -p "Enter password for decryption: " password
+            openssl enc -d -aes-256-cbc -in backup.tar.gz.enc -out backup.tar.gz -k "$password"
+            tar -xzf backup.tar.gz -C "$backup_dir"
+            echo ""
+            echo "Backup decrypted successfully."
+            ;;
+        8)
+            # Delete backup
+            read -p "Are you sure you want to delete the backup directory? (y/n) " delete_backup
+
+            if [ "$delete_backup" == "y" ]; then
+                rm -rf "$backup_dir"
+                echo ""
+                echo "Backup directory deleted successfully."
+            fi
+            ;;
+          9)
+            # Exit
+            echo ""
+            echo "Goodbye!"
+            exit
+            ;;
+
+        10)
+            # Verify backup integrity
+            if tar -tf "$backup_dir.tar.gz" &> /dev/null; then
+                echo ""
+                echo "Backup integrity verified. All files are intact."
+            else
+                echo ""
+                echo "Backup is corrupt or incomplete."
+            fi
+            ;;
+         11)
+             # Rotate backups
+            read -p "Enter the number of backups to keep: " num_backups
+            if [[ $num_backups =~ ^[0-9]+$ ]]; then
+                cd "$backup_dir" || exit
+                num_files=$(ls -1q | wc -l)
+                if [ "$num_files" -gt "$num_backups" ]; then
+                    num_to_delete=$((num_files - num_backups))
+                    oldest_files=$(ls -t | tail -n "$num_to_delete")
+                    rm -rf $oldest_files
+                    echo ""
+                    echo "Rotated backups. Kept the $num_backups most recent backups."
+                else
+                    echo ""
+                    echo "There are less than $num_backups backups. No rotation required."
+                fi
+            else
+                echo ""
+                echo "Invalid input. Please enter a valid number."
+            fi
+            ;;
+         12)
+            # Move backup
+            read -p "Enter new backup directory path: " new_backup_dir
+            mv "$backup_dir" "$new_backup_dir"
+            echo ""
+            echo "Backup directory moved successfully."
+            ;;
+
+        13)
+            # Backup to external hard drive
+            read -p "Enter external hard drive mount point: " ext_drive
+            cp -r "$backup_dir"/* "$ext_drive"
+            echo ""
+            echo "Backup copied to external hard drive successfully."
+            ;;
+
+        14)
+            #Help menu
+            clear
+            echo "Backup files: Copies all files and directories from the specified source directory to the specified backup directory."
+            echo ""
+            echo "Restore files: Restores all files and directories from the specified backup directory to the specified source directory."
+            echo ""
+            echo "Exclude files or directories from backup: Allows the user to exclude a specific file or directory from the backup. The user can choose to exclude all$"
+            echo ""
+            echo "View backup history: Displays a list of all files in the specified backup directory, sorted by modification time in reverse chronological order."
+            echo ""
+            echo "Compress backup: Compresses the specified backup directory into a tar archive and saves it with the specified name in the current directory."
+            echo ""
+            echo "Encrypt backup: Compresses and encrypts the specified backup directory using AES-256-CBC encryption with a user-specified password. The resulting enc$"
+            echo ""
+            echo "Decrypt backup: Decrypts and extracts the specified encrypted backup archive using the user-specified password, and saves the resulting backup direct$"
+            echo ""
+            echo "Delete backup: Deletes the specified backup directory and all its contents. The user is prompted to confirm the deletion."
+            echo ""
+            echo "Exit: Exits the program."
+            echo ""
+            echo "Verify backup integrity: Checks the integrity of the specified backup by testing the tar archive for errors. Prints a message indicating whether the $"
+            echo ""
+            echo "Rotate backups: Rotates the backups in the specified backup directory by deleting the oldest backups until the number of backups is equal to the user$"
+            echo ""
+            echo "Move backups: Moves the specified backup directory to a new location specified by the user."
+            echo ""
+            echo "Backup to external hardware: Copies all files and directories from the specified backup directory to an external hard drive or other mounted external$"
+            ;;
+
+
+        *)
+            # Invalid input
+            echo ""
+            echo "Invalid input. Please choose a number from the menu"
+
+
+        esac
+
+    # Prompt user to continue or exit
+    read -p "Press any key to continue or 'q' to quit: " key
+
+    if [ "$key" == "q" ]; then
+        echo ""
+         echo "Goodbye!"
+        exit
+    fi
+done
